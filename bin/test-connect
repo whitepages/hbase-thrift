@@ -1,0 +1,73 @@
+#! /usr/bin/ruby
+# === File Description
+# This script implements a test connection to specified hbase hosts
+
+require 'rubygems'
+require 'pathname'
+
+$:.unshift File.expand_path("../lib", Pathname.new(__FILE__).realpath)
+
+require 'hbase-thrift'
+
+$script_name = 'test-connect'
+
+class TestConnectApp
+  def initialize
+    @options = { :host => 'localhost',
+                 :port => 9090,
+                 :timeout => nil,
+                 :verbose => true,
+    }
+  end
+  
+  def do_standard_opts(opts)
+    opts.on("-v", "--verbose",
+            "Default: #{@options[:verbose]}") { @options[:verbose] = true }
+
+    opts.on("--port[=OPTIONAL]", Integer,
+            "Override configured port number") { |p| @options[:port] = p }
+
+    opts.on("-h[OPTIONAL]", "--host[=OPTIONAL]", String,
+            "Override configured hostname") { |h| @options[:host] = h }
+
+    opts.on("--timeout[=OPTIONAL]", Integer,
+            "Override configured port number") { |t| @options[:timeout] = h }
+
+    opts.on("--help") { puts opts; exit }
+  end
+
+  def do_init
+    
+    opts = ARGV.options do |opts|
+      opts.banner = %Q!
+Usage:
+  #{$script_name} [options]
+
+Description:
+  This script implements a test connection to specified hbase hosts
+
+Details:
+!
+      do_standard_opts(opts)
+      
+      opts.parse!
+    end
+    connect
+  end
+
+    def connect
+      hbase_connection_params = [@options[:host], @options[:port], @options[:timeout]]
+      puts "Connecting to hbase at #{@options[:host]}:#{@options[:port]}" if @options[:verbose]
+      t = Thrift::BufferedTransport.new(Thrift::Socket.new(*hbase_connection_params))
+      p = Thrift::BinaryProtocol.new(t)
+#      p = Thrift::CompactProtocol.new(t)
+      c = Apache::Hadoop::Hbase::Thrift::Hbase::Client.new(p)
+      t.open
+      
+      tables = c.getTableNames
+      puts tables
+    end
+
+end
+
+TestConnectApp.new.do_init
